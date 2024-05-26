@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '@db';
 import { matches } from '@schema';
-import { and, asc, eq, gte, lte, or, sql } from 'drizzle-orm';
+import { asc, sql } from 'drizzle-orm';
 
 const matchesRoute = new Hono()
 
@@ -18,7 +18,7 @@ matchesRoute.get('/', async (c) => {
       awayTeamScore: true,
       startAt: true
     },
-    orderBy: [asc(matches.startAt)],
+    orderBy: [asc(matches.startAt)]
   });
   return c.json(result);
 });

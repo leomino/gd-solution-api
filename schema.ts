@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { Many, relations } from "drizzle-orm";
 import {date, integer, pgTable, smallint, text, timestamp, uuid, varchar} from "drizzle-orm/pg-core";
 
 export const teams = pgTable('Team', {
@@ -80,9 +80,23 @@ export const communityMembersRelations = relations(communityMembers, ({ one }) =
     }),
 }));
 
+export const predictions = pgTable('Prediction', {
+    matchId: uuid('matchId').notNull().references(() => matches.id),
+    username: text('username').notNull().references(() => users.username),
+    homeTeamScore: smallint('homeTeamScore').notNull(),
+    awayTeamScore: smallint('awayTeamScore').notNull()
+})
 
-
-
+export const predictionsRelations = relations(predictions, ({one}) => ({
+    match: one(matches, {
+        fields: [predictions.matchId],
+        references: [matches.id]
+    }),
+    user: one(users, {
+        fields: [predictions.username],
+        references: [users.username]
+    })
+}));
 
 export const matchDaysRelations = relations(matchDays, ({ many }) => ({
     matches: many(matches),

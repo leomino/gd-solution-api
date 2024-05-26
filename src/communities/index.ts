@@ -32,4 +32,4 @@ communitiesRoute.get('/', async (c) => {
   return c.json(result);
 });
 
-export default communitiesRoute
+export default communitiesRoute;
