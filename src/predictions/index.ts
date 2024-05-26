@@ -1,8 +1,10 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import { and, eq } from 'drizzle-orm';
-import { predictions } from '@schema';
+import { and, eq, inArray } from 'drizzle-orm';
+import { matches, predictions } from '@schema';
 import { jwt } from 'hono/jwt';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
 
 const predictionsRoute = new Hono();
 predictionsRoute.use(
@@ -22,12 +24,36 @@ predictionsRoute.get('/', async (c) => {
         ),
         columns: {
             matchId: true,
-            username: true,
             awayTeamScore: true,
             homeTeamScore: true
         }
     });
     return c.json(result ?? null);
 });
+
+const predictionBulkSchema = z.array(z.string());
+
+predictionsRoute.post(
+    '/',
+    zValidator('json', predictionBulkSchema, ({ success }, c) => {
+        if (!success) return c.json({ error: 'Incorrect schema.' }, 400); 
+    }),
+    async (c) => {
+        const { sub } = c.get('jwtPayload');
+        const matchIds = c.req.valid('json');
+        const result = await db.query.predictions.findMany({
+            where: and(
+                eq(predictions.username, sub),
+                inArray(predictions.matchId, matchIds)
+            ),
+            columns: {
+                matchId: true,
+                awayTeamScore: true,
+                homeTeamScore: true
+            }
+        });
+        return c.json(result);
+    }
+)
 
 export default predictionsRoute;

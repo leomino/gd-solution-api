@@ -1,5 +1,5 @@
 import { Many, relations } from "drizzle-orm";
-import {date, integer, pgTable, smallint, text, timestamp, uuid, varchar} from "drizzle-orm/pg-core";
+import {date, integer, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar} from "drizzle-orm/pg-core";
 
 export const teams = pgTable('Team', {
     id: uuid('id').primaryKey(),
@@ -88,7 +88,11 @@ export const predictions = pgTable('Prediction', {
     username: text('username').notNull().references(() => users.username),
     homeTeamScore: smallint('homeTeamScore').notNull(),
     awayTeamScore: smallint('awayTeamScore').notNull()
-})
+}, (table) => {
+    return {
+        id: primaryKey({ columns: [table.matchId, table.username] }),
+    };
+});
 
 export const predictionsRelations = relations(predictions, ({one}) => ({
     match: one(matches, {
