@@ -50,14 +50,17 @@ export const communitiesRelations = relations(communities, ({ one, many }) => ({
 }));
 
 export const users = pgTable('User', {
-    username: uuid('username').primaryKey(),
+    firebaseId: varchar('firebaseId', { length: 256 }),
+    username: text('username').notNull().primaryKey(),
     name: text('name').notNull(),
     supportsTeamId: uuid('supportsTeamId').references(() => teams.id),
     points: integer('points').notNull().default(0)
 });
 
+export type User = typeof users.$inferSelect;
+
 export const usersRelations = relations(users, ({ one, many }) => ({
-    community: many(communityMembers),
+    communities: many(communityMembers),
     supports: one(teams, {
         fields: [users.supportsTeamId],
         references: [teams.id],

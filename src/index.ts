@@ -7,6 +7,7 @@ import matchesRoute from './matches';
 import tournamentsRoute from './tournaments';
 import communitiesRoute from './communities';
 import predictionsRoute from './predictions';
+import authRoutes from './auth';
 
 assert(process.env.DATABASE_URL, 'DATABASE_URL is not defined');
 
@@ -15,6 +16,7 @@ app.use('*', logger());
 
 app
     .basePath('/api')
+    .route('auth', authRoutes)
     .route('match-days', matchDaysRoute)
     .route('teams', teamsRoute)
     .route('matches', matchesRoute)
