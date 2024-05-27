@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { User, users } from "@schema";
+import { users } from "@schema";
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
 import { createInsertSchema } from "drizzle-zod";
@@ -8,6 +8,7 @@ import { UserRecord } from "firebase-admin/auth";
 import { FirebaseError } from "firebase-admin";
 import { db } from "@db";
 import { createJWT } from "../lib/token";
+import { eq } from "drizzle-orm";
 
 const app = new Hono();
 
@@ -24,10 +25,10 @@ const signUpRoute = app.post('',
     async (c) => {
         const { email, password, user } = c.req.valid('json');
 
-        let createdUser: UserRecord | undefined;
+        let createdFireBaseUser: UserRecord | undefined;
         
         try {
-            createdUser = await getAuth().createUser({
+            createdFireBaseUser = await getAuth().createUser({
                 email,
                 password
             });
@@ -36,17 +37,29 @@ const signUpRoute = app.post('',
             return c.json({ message }, 409);
         }
 
-        if (!createdUser) {
+        if (!createdFireBaseUser) {
             return c.json({ message: 'Failed to create user.'}, 500);
         }
 
-        const firebaseId = createdUser.uid;
+        const firebaseId = createdFireBaseUser.uid;
 
         const [created] = await db.insert(users).values({ ...user, firebaseId }).returning({ username: users.username });
 
         const token = await createJWT(firebaseId, created.username);
 
-        return c.json({ token }, 201);
+        const createdUser = await db.query.users.findFirst({
+            where: eq(users.username, created.username)
+        });
+
+        if (!createdUser) {
+            // cascade delete firebase user or try again?
+            return c.json({ message: 'Failed to create user.'}, 500);
+        }
+
+        return c.json({
+            token,
+            user: createdUser
+        }, 201);
     }
 );
 

@@ -20,7 +20,7 @@ type SignInResponse = {
 const signInSchema = z.object({
     email: z.string(),
     password: z.string()
-})
+});
 
 const signInRoute = app.post(
     '',
@@ -55,7 +55,7 @@ const signInRoute = app.post(
             }, 412);
         }
 
-        const token = await createJWT(res.idToken, user.username);
+        const token = await createJWT(res.localId, user.username);
 
         return c.json({
             token,

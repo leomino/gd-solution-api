@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '@db';
 import { and, eq, inArray } from 'drizzle-orm';
-import { matches, predictions } from '@schema';
+import { predictions } from '@schema';
 import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';

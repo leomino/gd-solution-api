@@ -109,7 +109,7 @@ export const matchDaysRelations = relations(matchDays, ({ many }) => ({
     matches: many(matches),
 }));
 
-export const matchesRelations = relations(matches, ({ one }) => ({
+export const matchesRelations = relations(matches, ({ one, many }) => ({
     matchDay: one(matchDays, {
         fields: [matches.matchDayId],
         references: [matchDays.id]
@@ -125,5 +125,6 @@ export const matchesRelations = relations(matches, ({ one }) => ({
     winnerTeam: one(teams, {
         fields: [matches.winnerTeamId],
         references: [teams.id]
-    })
+    }),
+    predictions: many(predictions)
 }));
