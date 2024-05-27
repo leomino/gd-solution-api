@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '@db';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { predictions } from '@schema';
+import { matches, predictions } from '@schema';
 import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -73,6 +73,22 @@ predictionsRoute.put(
         if (!matchId) {
             return c.json({ error: 'Incorrect schema.' }, 400);
         }
+        
+        const match = await db.query.matches.findFirst({
+            where: eq(matches.id, matchId)
+        });
+
+        if (!match) {
+            return c.json({ error: 'Match not found' }, 404);
+        }
+
+        const currentTime = new Date();
+        const matchStartAt = new Date(match.startAt)
+
+        if (matchStartAt < currentTime) {
+            return c.json({ error: 'Its not allowed to bet on matches that have already started or are over.' }, 412);
+        }
+
         const prediction = c.req.valid('json');
         const upserted = await db.insert(predictions)
             .values({
