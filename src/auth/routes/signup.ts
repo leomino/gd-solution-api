@@ -48,7 +48,15 @@ const signUpRoute = app.post('',
         const token = await createJWT(firebaseId, created.username);
 
         const createdUser = await db.query.users.findFirst({
-            where: eq(users.username, created.username)
+            where: eq(users.username, created.username),
+            with: {
+                supports: true
+            },
+            columns: {
+                username: true,
+                name: true,
+                points: true
+            }
         });
 
         if (!createdUser) {
