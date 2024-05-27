@@ -1,10 +1,11 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { predictions } from '@schema';
 import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { logger } from 'hono/logger';
 
 const predictionsRoute = new Hono();
 predictionsRoute.use(
@@ -31,11 +32,11 @@ predictionsRoute.get('/', async (c) => {
     return c.json(result ?? null);
 });
 
-const predictionBulkSchema = z.array(z.string());
+const predictionBulkRequestSchema = z.array(z.string());
 
 predictionsRoute.post(
     '/',
-    zValidator('json', predictionBulkSchema, ({ success }, c) => {
+    zValidator('json', predictionBulkRequestSchema, ({ success }, c) => {
         if (!success) return c.json({ error: 'Incorrect schema.' }, 400); 
     }),
     async (c) => {
@@ -54,6 +55,42 @@ predictionsRoute.post(
         });
         return c.json(result);
     }
-)
+);
+
+const predictionCreateOrUpdate = z.object({
+    homeTeamScore: z.number(),
+    awayTeamScore: z.number()
+});
+
+predictionsRoute.put(
+    '/',
+    zValidator('json', predictionCreateOrUpdate, ({ success }, c) => {
+        if (!success) return c.json({ error: 'Incorrect schema.' }, 400); 
+    }),
+    async (c) => {
+        const { sub } = c.get('jwtPayload');
+        const matchId = c.req.query('matchId');
+        if (!matchId) {
+            return c.json({ error: 'Incorrect schema.' }, 400);
+        }
+        const prediction = c.req.valid('json');
+        const upserted = await db.insert(predictions)
+            .values({
+                ...prediction,
+                matchId, 
+                username: sub
+            })
+            .onConflictDoUpdate({
+                target: [predictions.matchId, predictions.username],
+                set: {
+                    homeTeamScore: prediction.homeTeamScore,
+                    awayTeamScore: prediction.awayTeamScore
+                }
+            })
+            .returning();
+        const { homeTeamScore, awayTeamScore } = upserted[0];
+        return c.json({ homeTeamScore, awayTeamScore });
+    }
+);
 
 export default predictionsRoute;
