@@ -70,6 +70,10 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export const communityMembers = pgTable('CommunityMembers', {
     username: text('username').notNull().references(() => users.username),
     communityId: uuid('communityId').notNull().references(() => communities.id),
+}, (table) => {
+    return {
+        id: primaryKey({ columns: [table.username, table.communityId] }),
+    };
 });
 
 export const communityMembersRelations = relations(communityMembers, ({ one }) => ({

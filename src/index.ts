@@ -8,6 +8,7 @@ import tournamentsRoute from './tournaments';
 import communitiesRoute from './communities';
 import predictionsRoute from './predictions';
 import authRoutes from './auth';
+import usersRoute from './users';
 
 assert(process.env.DATABASE_URL, 'DATABASE_URL is not defined');
 
@@ -23,5 +24,6 @@ app
     .route('tournaments', tournamentsRoute)
     .route('communities', communitiesRoute)
     .route('predictions', predictionsRoute)
+    .route('users', usersRoute)
 
 export default app;

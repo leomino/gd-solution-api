@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import { eq } from 'drizzle-orm';
-import { communities, communityMembers, tournaments } from '@schema';
+import { and, eq, inArray } from 'drizzle-orm';
+import { communities, communityMembers, tournaments, users } from '@schema';
 import { jwt } from 'hono/jwt';
-import { z } from 'zod';
+import { object, z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 
 const communitiesRoute = new Hono();
@@ -60,8 +60,8 @@ const createCommunityPayload = z.object({
 
 communitiesRoute.post(
   '/',
-  zValidator('json', createCommunityPayload, (validation, c) => {
-    if (!validation.success) return c.json({ error: 'Incorrect schema.' , validation }, 400); 
+  zValidator('json', createCommunityPayload, ({success}, c) => {
+    if (!success) return c.json({ error: 'Incorrect schema.' }, 400);
   }),
   async (c) => {
     const { sub } = c.get('jwtPayload');
@@ -107,6 +107,49 @@ communitiesRoute.post(
 
     return c.json({ ...createdCommunity, members: createdCommunity.members.map(({user}) => user) })
   }
-)
+);
+
+const inviteToCommunitySchema = z.array(z.string());
+
+communitiesRoute.post(
+  '/:communityId/invite',
+  zValidator('json', inviteToCommunitySchema, ({success}, c) => {
+    if (!success) return c.json({ error: 'Incorrect schema.' }, 400);
+  }),
+  async (c) => {
+    const { sub } = c.get('jwtPayload');
+    const communityId = c.req.param('communityId');
+    
+    const community = await db.query.communityMembers.findFirst({
+      where: and(
+        eq(communityMembers.communityId, communityId),
+        eq(communityMembers.username, sub)
+      )
+    });
+
+    if (!community) {
+      return c.json({ error: 'Only members of the community can invite others.' }, 401);
+    }
+
+    const invitees = c.req.valid('json');
+    const addedUsers = await db.insert(communityMembers).values(invitees.map(username => ({ communityId, username }))).onConflictDoNothing().returning();
+
+    if (!addedUsers.length) {
+      return c.json([]);
+    }
+
+    const result = await db.query.users.findMany({
+      where: inArray(users.username, addedUsers.map(({username}) => username)),
+      with: {
+        supports: true
+      },
+      columns: {
+        supportsTeamId: false,
+        firebaseId: false
+      }
+    });
+    return c.json(result);
+  }
+);
 
 export default communitiesRoute;
