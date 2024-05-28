@@ -8,13 +8,13 @@ export const teams = pgTable('Team', {
 });
 
 export const matchDays = pgTable('MatchDay', {
-    id: uuid('id').primaryKey(),
+    id: uuid('id').primaryKey().defaultRandom(),
     from: date('from').notNull(),
     to: date('to').notNull()
 });
 
 export const matches = pgTable('Match', {
-    id: uuid('id').primaryKey(),
+    id: uuid('id').primaryKey().defaultRandom(),
     matchDayId: uuid('matchDayId').references(() => matchDays.id).notNull(),
     homeTeamId: uuid('homeTeamId').references(() => teams.id).notNull(),
     awayTeamId: uuid('awayTeamId').references(() => teams.id).notNull(),
@@ -25,7 +25,7 @@ export const matches = pgTable('Match', {
 });
 
 export const tournaments = pgTable('Tournament', {
-    id: uuid('id').primaryKey(),
+    id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     from: date('from').notNull(),
     to: date('to').notNull()
@@ -36,7 +36,7 @@ export const tournamentsRelations = relations(tournaments, ({ many }) => ({
 }));
 
 export const communities = pgTable('Community', {
-    id: uuid('id').primaryKey(),
+    id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     tournamentId: uuid('tournamentId').references(() => tournaments.id).notNull()
 });
