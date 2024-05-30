@@ -1,5 +1,5 @@
 import { Many, relations } from "drizzle-orm";
-import {date, integer, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar} from "drizzle-orm/pg-core";
+import { boolean, date, integer, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const teams = pgTable('Team', {
     id: uuid('id').primaryKey(),
@@ -18,9 +18,6 @@ export const matches = pgTable('Match', {
     matchDayId: uuid('matchDayId').references(() => matchDays.id).notNull(),
     homeTeamId: uuid('homeTeamId').references(() => teams.id).notNull(),
     awayTeamId: uuid('awayTeamId').references(() => teams.id).notNull(),
-    homeTeamScore: smallint('homeTeamScore'),
-    awayTeamScore: smallint('awayTeamScore'),
-    winnerTeamId: uuid('winnerTeamId').references(() => teams.id),
     startAt: timestamp('startAt', { mode: 'string' }).notNull().defaultNow(),
 });
 
@@ -47,6 +44,7 @@ export const communitiesRelations = relations(communities, ({ one, many }) => ({
         references: [tournaments.id],
     }),
     members: many(communityMembers),
+    pinned: many(communityPinnedMembers)
 }));
 
 export const users = pgTable('User', {
@@ -56,6 +54,31 @@ export const users = pgTable('User', {
     supportsTeamId: uuid('supportsTeamId').references(() => teams.id),
     points: integer('points').notNull().default(0)
 });
+
+export const communityPinnedMembers = pgTable('CommunityPinnedMembers', {
+    username: text('username').notNull().references(() => users.username),
+    communityId: uuid('communityId').notNull().references(() => communities.id),
+    pinned: text('pinned').references(() => users.username)
+}, (table) => {
+    return {
+        id: primaryKey({ columns: [table.username, table.communityId, table.pinned] }),
+    };
+});
+
+export const communityPinnedMembersRelation = relations(communityPinnedMembers, ({ one }) => ({
+    user: one(users, {
+        fields: [communityPinnedMembers.username],
+        references: [users.username]
+    }),
+    community: one(communities, {
+        fields: [communityPinnedMembers.communityId],
+        references: [communities.id]
+    }),
+    pinnedUser: one(users, {
+        fields: [communityPinnedMembers.pinned],
+        references: [users.username]
+    })
+}));
 
 export type User = typeof users.$inferSelect;
 
@@ -113,6 +136,13 @@ export const matchDaysRelations = relations(matchDays, ({ many }) => ({
     matches: many(matches),
 }));
 
+export const matchResults = pgTable('MatchResults', {
+    matchId: uuid('matchId').notNull().primaryKey().references(() => matches.id),
+    homeTeamScore: smallint('homeTeamScore').notNull().default(0),
+    awayTeamScore: smallint('awayTeamScore').notNull().default(0),
+    finalized: boolean('finalized').notNull().default(false)
+});
+
 export const matchesRelations = relations(matches, ({ one, many }) => ({
     matchDay: one(matchDays, {
         fields: [matches.matchDayId],
@@ -126,9 +156,9 @@ export const matchesRelations = relations(matches, ({ one, many }) => ({
         fields: [matches.awayTeamId],
         references: [teams.id]
     }),
-    winnerTeam: one(teams, {
-        fields: [matches.winnerTeamId],
-        references: [teams.id]
+    result: one(matchResults, {
+        fields: [matches.id],
+        references: [matchResults.matchId]
     }),
     predictions: many(predictions)
 }));

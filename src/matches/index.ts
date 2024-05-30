@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import { matches, predictions } from '@schema';
+import { matchResults, matches, predictions } from '@schema';
 import { asc, eq, sql } from 'drizzle-orm';
 import { jwt } from 'hono/jwt';
 
@@ -18,7 +18,13 @@ matchesRoute.get('/', async (c) => {
     with: {
       homeTeam: true,
       awayTeam: true,
-      winnerTeam: true,
+      result: {
+        columns: {
+            finalized: true,
+            homeTeamScore: true,
+            awayTeamScore: true,
+          }
+      },
       predictions: {
         where: eq(predictions.username, sub),
         columns: {
@@ -29,8 +35,6 @@ matchesRoute.get('/', async (c) => {
     },
     columns: {
       id: true,
-      homeTeamScore: true,
-      awayTeamScore: true,
       startAt: true
     },
     orderBy: [asc(matches.startAt)]
@@ -46,7 +50,13 @@ matchesRoute.get('/next', async (c) => {
     with: {
       homeTeam: true,
       awayTeam: true,
-      winnerTeam: true,
+      result: {
+        columns: {
+            finalized: true,
+            homeTeamScore: true,
+            awayTeamScore: true,
+          }
+      },
       predictions: {
         where: eq(predictions.username, sub),
         columns: {
@@ -57,8 +67,6 @@ matchesRoute.get('/next', async (c) => {
     },
     columns: {
       id: true,
-      homeTeamScore: true,
-      awayTeamScore: true,
       startAt: true
     },
     where: sql`(${matches.startAt} <= ${currentTime} AND ${matches.startAt} + interval '95 minutes' >= ${currentTime}) OR ${matches.startAt}::date = ${currentDate}`,
@@ -68,7 +76,13 @@ matchesRoute.get('/next', async (c) => {
       with: {
         homeTeam: true,
         awayTeam: true,
-        winnerTeam: true,
+        result: {
+          columns: {
+              finalized: true,
+              homeTeamScore: true,
+              awayTeamScore: true,
+            }
+        },
         predictions: {
           where: eq(predictions.username, sub),
           columns: {
@@ -79,8 +93,6 @@ matchesRoute.get('/next', async (c) => {
       },
       columns: {
         id: true,
-        homeTeamScore: true,
-        awayTeamScore: true,
         startAt: true
       },
       where: sql`${matches.startAt} > now()`,
