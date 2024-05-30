@@ -20,7 +20,13 @@ matchDaysRoute.get('/', async (c) => {
         with: {
           homeTeam: true,
           awayTeam: true,
-          winnerTeam: true,
+          result: {
+            columns: {
+                finalized: true,
+                homeTeamScore: true,
+                awayTeamScore: true,
+              }
+          },
           predictions: {
             where: eq(predictions.username, sub),
             columns: {
@@ -31,8 +37,6 @@ matchDaysRoute.get('/', async (c) => {
         },
         columns: {
           id: true,
-          homeTeamScore: true,
-          awayTeamScore: true,
           startAt: true
         },
         orderBy: [asc(matches.startAt)]

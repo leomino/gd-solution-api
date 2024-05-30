@@ -16,7 +16,8 @@ usersRoute.get('/', async (c) => {
             columns: {
                 name: true,
                 points: true,
-                username: true
+                username: true,
+                joinedAt: true
             }
         });
     } else {
@@ -28,7 +29,8 @@ usersRoute.get('/', async (c) => {
             columns: {
                 name: true,
                 points: true,
-                username: true
+                username: true,
+                joinedAt: true
             }
         });
     }

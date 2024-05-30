@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import { matchResults, matches, predictions } from '@schema';
+import { matches, predictions } from '@schema';
 import { asc, eq, sql } from 'drizzle-orm';
 import { jwt } from 'hono/jwt';
 

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, ilike, inArray } from 'drizzle-orm';
 import { communities, communityMembers, communityPinnedMembers, users } from '@schema';
 import { jwt } from 'hono/jwt';
 import { z } from 'zod';
@@ -21,21 +21,7 @@ communitiesRoute.get('/', async (c) => {
     with: {
       community: {
         with: {
-          tournament: true,
-          members: {
-            with: {
-              user: {
-                with: {
-                  supports: true
-                },
-                columns: {
-                  supportsTeamId: false,
-                  firebaseId: false
-                }
-              }
-            },
-            columns: { }
-          }
+          tournament: true
         },
         columns: {
           tournamentId: false
@@ -44,12 +30,28 @@ communitiesRoute.get('/', async (c) => {
     },
     columns: { }
   });
-  const result = communities.map(({ community }) => ({
-    ...community,
-    members: community.members.map(({user}) => user)
-  }));
+  const result = communities.map(({ community }) => community);
   return c.json(result);
 });
+
+communitiesRoute.get('/search', async (c) => {
+  const { searchString } = c.req.query();
+  if (!searchString) {
+    return c.json({ message: 'Invalid-request: query-param searchString must not be empty.'}, 400)
+  }
+  const result = await db.query.communities.findMany({
+    where: ilike(communities.name, `%${searchString}%`),
+    with: {
+      tournament: true
+    },
+    columns: {
+      id: true,
+      name: true
+    }
+  });
+
+  return c.json(result);
+})
 
 const createCommunityPayload = z.object({
   name: z.string(),
@@ -81,20 +83,6 @@ communitiesRoute.post(
       where: eq(communities.id, created.at(0)!.id),
       with: {
         tournament: true,
-        members: {
-          with: {
-            user: {
-              with: {
-                supports: true
-              },
-              columns: {
-                supportsTeamId: false,
-                firebaseId: false
-              }
-            }
-          },
-          columns: { }
-        }
       },
       columns: {
         tournamentId: false
@@ -105,21 +93,18 @@ communitiesRoute.post(
       return c.json({ error: 'Failed to create new community.' }, 500); 
     }
 
-    return c.json({ ...createdCommunity, members: createdCommunity.members.map(({user}) => user) })
+    return c.json(createdCommunity)
   }
 );
 
 const inviteToCommunitySchema = z.array(z.string());
 
 communitiesRoute.post(
-  '/:communityId/invite',
-  zValidator('json', inviteToCommunitySchema, ({success}, c) => {
-    if (!success) return c.json({ error: 'Incorrect schema.' }, 400);
-  }),
+  '/join/:communityId',
   async (c) => {
     const { sub } = c.get('jwtPayload');
     const communityId = c.req.param('communityId');
-    
+
     const community = await db.query.communityMembers.findFirst({
       where: and(
         eq(communityMembers.communityId, communityId),
@@ -127,28 +112,13 @@ communitiesRoute.post(
       )
     });
 
-    if (!community) {
-      return c.json({ error: 'The community was not found.' }, 401);
+    if (community) {
+      return c.json({ message: 'You are already part of that community.' }, 412);
     }
 
-    const invitees = c.req.valid('json');
-    const addedUsers = await db.insert(communityMembers).values(invitees.map(username => ({ communityId, username }))).onConflictDoNothing().returning();
-
-    if (!addedUsers.length) {
-      return c.json([]);
-    }
-
-    const result = await db.query.users.findMany({
-      where: inArray(users.username, addedUsers.map(({username}) => username)),
-      with: {
-        supports: true
-      },
-      columns: {
-        supportsTeamId: false,
-        firebaseId: false
-      }
-    });
-    return c.json(result);
+    await db.insert(communityMembers).values({communityId, username: sub}).onConflictDoNothing().returning();
+    
+    return c.json({}, 201)
   }
 );
 

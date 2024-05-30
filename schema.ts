@@ -1,4 +1,4 @@
-import { Many, relations } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 import { boolean, date, integer, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const teams = pgTable('Team', {
@@ -52,7 +52,8 @@ export const users = pgTable('User', {
     username: text('username').notNull().primaryKey(),
     name: text('name').notNull(),
     supportsTeamId: uuid('supportsTeamId').references(() => teams.id),
-    points: integer('points').notNull().default(0)
+    points: integer('points').notNull().default(0),
+    joinedAt: timestamp('joinedAt', { mode: 'string' }).notNull().defaultNow()
 });
 
 export const communityPinnedMembers = pgTable('CommunityPinnedMembers', {
@@ -79,8 +80,6 @@ export const communityPinnedMembersRelation = relations(communityPinnedMembers, 
         references: [users.username]
     })
 }));
-
-export type User = typeof users.$inferSelect;
 
 export const usersRelations = relations(users, ({ one, many }) => ({
     communities: many(communityMembers),
