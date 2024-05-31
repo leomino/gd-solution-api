@@ -55,7 +55,8 @@ const signUpRoute = app.post('',
             columns: {
                 username: true,
                 name: true,
-                points: true
+                points: true,
+                joinedAt: true,
             }
         });
 

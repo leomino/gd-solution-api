@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { communities, communityMembers, teams, users } from "@schema";
+import {communities, communityMembers, teams, tournaments, users} from "@schema";
 import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
@@ -159,6 +159,59 @@ leaderboardsRoute.get('/:communityId/user-search', async (c) => {
     })));
 });
 
+leaderboardsRoute.get('/:tournamentId/global', async (c) => {
+    const { sub } = c.get('jwtPayload');
+    const { tournamentId } = c.req.param();
+
+    if (!tournamentId || !tournamentId.length) {
+        return c.json({ message: "TournamentId cannot be empty." }, 400);
+    }
+
+    const tournament = await db.query.tournaments.findFirst({
+        where: eq(tournaments.id, tournamentId),
+    });
+
+    if (!tournament) {
+        return c.json({ message: "Tournament not found." }, 404);
+    }
+
+    const leaderboardData = await db.select({
+        user: users,
+        supports: teams
+    })
+    .from(users)
+    .leftJoin(teams, eq(teams.id, users.supportsTeamId))
+    .orderBy(desc(users.points), asc(users.joinedAt))
+
+    let currentUserIndex;
+    const entries = leaderboardData.map(({ user, supports }, index) => {
+        const { firebaseId, supportsTeamId, ...rest } = user;
+        if (user.username === sub) {
+            currentUserIndex = index;
+        }
+        return {
+            user: {
+                ...rest,
+                supports
+            } as User,
+            position: index + 1
+        }
+    });
+
+    if (currentUserIndex == null) {
+        return c.json({ message: "Current user not found." }, 404);
+    }
+
+    return c.json({
+        community: {
+            id: crypto.randomUUID(),
+            name: "Global",
+            tournament
+        },
+        entries: getLeaderboardPreviewMembers(entries, entries[currentUserIndex])
+    });
+})
+
 const getLeaderboardDataForCommunity = async (communityId: string, sub: string) => {
     const communityData = await db.query.communityMembers.findFirst({
         where: and(eq(communityMembers.username, sub), eq(communityMembers.communityId, communityId)),
@@ -232,15 +285,11 @@ const getLeaderboardPreviewMembers = (members: LeaderboardEntry[], currentUser: 
         return result;
     }
 
-    if (currentUserPosition < membersCount - 2) {
-        result = [...members.slice(0, 3), currentUser];
-        if (membersCount > 4) {
-            result.push(...members.slice(currentUserPosition, Math.min(membersCount - 1, currentUserPosition + 2)));
-        }
-        return result;
+    if (currentUserPosition >= membersCount - 2) {
+        return [...members.slice(0, 3), ...members.slice(-(Math.min(4, membersCount - 3)))];
     }
 
-    return [...members.slice(0, 3), currentUser, ...members.slice(membersCount - 5, membersCount - 1)]
+    return [...members.slice(0, 3), members[currentUserPosition - 2], currentUser, members[currentUserPosition], members[membersCount - 1]];
 }
 
 export default leaderboardsRoute;
