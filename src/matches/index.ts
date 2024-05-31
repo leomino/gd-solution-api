@@ -35,6 +35,7 @@ const getAllMatches = async (currentUsername: string) => {
       awayTeam: true,
       result: {
         columns: {
+          matchId: true,
           finalized: true,
           homeTeamScore: true,
           awayTeamScore: true,
@@ -66,6 +67,7 @@ const getCurrentlyPlaying = async (currentUsername: string) => {
       awayTeam: true,
       result: {
         columns: {
+          matchId: true,
           finalized: true,
           homeTeamScore: true,
           awayTeamScore: true,
@@ -96,6 +98,7 @@ const getAboutToStart = async (currentUsername: string) => {
       awayTeam: true,
       result: {
         columns: {
+          matchId: true,
           finalized: true,
           homeTeamScore: true,
           awayTeamScore: true,

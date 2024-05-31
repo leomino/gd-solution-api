@@ -22,6 +22,7 @@ matchDaysRoute.get('/', async (c) => {
           awayTeam: true,
           result: {
             columns: {
+                matchId: true,
                 finalized: true,
                 homeTeamScore: true,
                 awayTeamScore: true,

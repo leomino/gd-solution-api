@@ -219,35 +219,28 @@ const getLeaderboardDataForCommunity = async (communityId: string, sub: string) 
     }
 }
 
-const getLeaderboardPreviewMembers = (members: LeaderboardEntry[], currentUser: LeaderboardEntry) => {
-    let result: { user: User, position: number }[] = [];
-    const currentUserIndex = currentUser.position - 1;
+const getLeaderboardPreviewMembers = (members: LeaderboardEntry[], currentUser: LeaderboardEntry): LeaderboardEntry[] => {
+    const currentUserPosition = currentUser.position;
+    const membersCount = members.length;
 
-    const topThree = Math.min(3, currentUserIndex + 1);
-
-    result = members.slice(0, topThree);
-
-    if (members.length < 4) {
+    let result: LeaderboardEntry[] = []
+    if (currentUserPosition < 6) {
+        result.push(...members.slice(0, Math.min(6, membersCount)));
+        if (membersCount > 6) {
+            result.push(members[membersCount - 1]);
+        }
         return result;
     }
 
-    if (currentUserIndex > 2) {
-        if (currentUserIndex > 3) {
-            result.push(members[currentUserIndex - 1]);
+    if (currentUserPosition < membersCount - 2) {
+        result = [...members.slice(0, 3), currentUser];
+        if (membersCount > 4) {
+            result.push(...members.slice(currentUserPosition, Math.min(membersCount - 1, currentUserPosition + 2)));
         }
-        result.push(currentUser);
+        return result;
     }
 
-    const afterCurrentUser = currentUserIndex + 1;
-    if (members.length > afterCurrentUser) {
-      result.push(members[afterCurrentUser]);
-    }
-
-    const lastPlace = members.length - 1
-    if (lastPlace > afterCurrentUser) {
-      result.push(members[lastPlace]);
-    }
-    return result;
+    return [...members.slice(0, 3), currentUser, ...members.slice(membersCount - 5, membersCount - 1)]
 }
 
 export default leaderboardsRoute;
