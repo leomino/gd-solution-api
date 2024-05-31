@@ -137,7 +137,28 @@ communitiesRoute.post(
 
     await db.insert(communityMembers).values({communityId, username: sub, position: 0}).onConflictDoNothing().returning();
     
-    return c.json({}, 201)
+    const joined = await db.query.communityMembers.findFirst({
+      where: and(
+        eq(communityMembers.communityId, communityId),
+        eq(communityMembers.username, sub)
+      ),
+      with: {
+        community: {
+          with: {
+            tournament: true
+          },
+          columns: {
+            tournamentId: false
+          }
+        },
+      }
+    });
+
+    if (!joined) {
+      return c.json({ message: 'Failed to join the community.' }, 500); 
+    }
+
+    return c.json(joined.community)
   }
 );
 
