@@ -118,7 +118,8 @@ leaderboardsRoute.get('/:communityId/pages', async (c) => {
 
 leaderboardsRoute.get('/:communityId/user-search', async (c) => {
     const { sub } = c.get('jwtPayload');
-    const { communityId, searchString } = c.req.query();
+    const { communityId } = c.req.param();
+    const { searchString } = c.req.query();
     const communityExists = await db.query.communityMembers.findFirst({
         where: eq(communityMembers.username, sub),
         columns: {
