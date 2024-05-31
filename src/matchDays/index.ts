@@ -39,10 +39,10 @@ matchDaysRoute.get('/', async (c) => {
           id: true,
           startAt: true
         },
-        orderBy: [asc(matches.startAt)]
+        orderBy: asc(matches.startAt)
       },
     },
-    orderBy: [asc(matchDays.from)]
+    orderBy: asc(matchDays.from)
   });
   
   return c.json(result.map(({ matches, ...rest }) => ({...rest, matches: matches.map(({predictions, ...rest}) => ({...rest, prediction: predictions[0] ?? null}))})));
