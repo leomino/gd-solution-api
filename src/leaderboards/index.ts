@@ -1,6 +1,6 @@
 import { db } from "@db";
 import { communityMembers, teams, users } from "@schema";
-import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
 
@@ -13,7 +13,7 @@ leaderboardsRoute.use(
     })
 );
 
-leaderboardsRoute.get('/filter', async (c) => {
+leaderboardsRoute.get('/search', async (c) => {
     const { sub } = c.get('jwtPayload');
     const { communityId, searchString } = c.req.query();
     const communityExists = await db.query.communityMembers.findFirst({
@@ -29,23 +29,30 @@ leaderboardsRoute.get('/filter', async (c) => {
 
     const result = await db.select({
         user: users,
-        supports: teams
+        supports: teams,
+        position: communityMembers.position
     })
     .from(users)
     .innerJoin(communityMembers, eq(users.username, communityMembers.username))
-    .where(eq(communityMembers.communityId, communityId))
+    .where(and(
+        eq(communityMembers.communityId, communityId),
+        or(
+            ilike(users.username, `%${searchString}%`),
+            ilike(users.name, `%${searchString}%`)
+        )
+    ))
     .leftJoin(teams, eq(teams.id, users.supportsTeamId))
     .orderBy(desc(users.points), asc(users.joinedAt))
 
-    return c.json(result.map((entry, index) => ({
+    return c.json(result.map(({user, supports, position}) => ({
         user: {
-            ...entry.user,
-            supports: entry.supports,
+            ...user,
+            supports,
             supportsTeamId: undefined,
             firebaseId: undefined
         },
-        position: index + 1
-    })).filter(({user}) => `${user.username}${user.name}`.toLowerCase().includes(searchString.toLowerCase())));
+        position
+    })));
 });
 
 // get paginations for leaderboard
@@ -66,39 +73,32 @@ leaderboardsRoute.get('/', async (c) => {
 
     const result = await db.select({
         user: users,
-        supports: teams
+        supports: teams,
+        position: communityMembers.position
     })
     .from(users)
-    .innerJoin(communityMembers, eq(users.username, communityMembers.username))
-    .where(eq(communityMembers.communityId, communityId))
+    .innerJoin(communityMembers, and(
+        eq(users.username, communityMembers.username),
+        eq(communityMembers.communityId, communityId)
+    ))
     .leftJoin(teams, eq(teams.id, users.supportsTeamId))
     .orderBy(desc(users.points), asc(users.joinedAt))
+    .offset(Number(offset))
+    .limit(Number(limit))
 
-    const sliceStart = Number(offset);
-    const sliceEnd = sliceStart + Number(limit);
-
-    return c.json(result.map((entry, index) => ({
+    return c.json(result.map(({user, supports, position}) => ({
         user: {
-            ...entry.user,
-            supports: entry.supports,
+            ...user,
+            supports,
             supportsTeamId: undefined,
             firebaseId: undefined
         },
-        position: index + 1
-    })).slice(sliceStart, sliceEnd));
+        position
+    })));
 });
 
 leaderboardsRoute.get('/previews', async (c) => {
     const { sub } = c.get('jwtPayload');
-  
-    // const subsCommunities = await db.select({
-    //     id: communities.id,
-    //     name: communities.name,
-    //     tournamentId: communities.tournamentId
-    // })
-    // .from(communityMembers)
-    // .where(eq(communityMembers.username, sub))
-    // .innerJoin(communities, eq(communities.id, communityMembers.communityId));
 
     const attendingCommunities = await db.query.communityMembers.findMany({
         where: eq(communityMembers.username, sub),
@@ -125,7 +125,9 @@ leaderboardsRoute.get('/previews', async (c) => {
                 }
             }
         },
-        columns: {}
+        columns: {
+            position: true
+        }
     });
 
     if (!attendingCommunities.length) {
@@ -135,8 +137,8 @@ leaderboardsRoute.get('/previews', async (c) => {
     const result = attendingCommunities.map(({ community }) => ({
         community: { ...community, members: undefined, tournamentId: undefined },
         entries: getLeaderboardPreviewMembers(community.members.map(({user}) => user).sort((a, b) => b.points != a.points ? b.points - a.points : new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()), sub)
-      }));
-      return c.json(result);
+    }));
+    return c.json(result);
   });
 
   type User = {

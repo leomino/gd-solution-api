@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import { and, eq, ilike, inArray } from 'drizzle-orm';
-import { communities, communityMembers, communityPinnedMembers, users } from '@schema';
+import { and, count, eq, ilike } from 'drizzle-orm';
+import { communities, communityMembers } from '@schema';
 import { jwt } from 'hono/jwt';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -13,6 +13,7 @@ communitiesRoute.use(
     secret: process.env.JWT_SECRET!,
   }),
 );
+
 communitiesRoute.get('/', async (c) => {
   const { sub } = c.get('jwtPayload');
 
@@ -70,6 +71,16 @@ communitiesRoute.post(
     const communityToBeCreated = c.req.valid('json');
     const { name, tournament } = communityToBeCreated;
     
+    const joinedCommunities = await db.select({
+      count: count()
+    })
+    .from(communityMembers)
+    .where(eq(communityMembers.username, sub))
+
+    if (joinedCommunities[0].count >= 5) {
+      return c.json({ error: 'You cannot be part of more then 5 communities.' }, 412); 
+    }
+
     const created = await db.insert(communities)
       .values({ name: name, tournamentId: tournament.id }).returning()
 
@@ -77,7 +88,7 @@ communitiesRoute.post(
       return c.json({ error: 'Failed to create new community.' }, 500); 
     }
 
-    await db.insert(communityMembers).values({communityId: created.at(0)!.id, username: sub});
+    await db.insert(communityMembers).values({communityId: created.at(0)!.id, username: sub, position: 0});
 
     const createdCommunity = await db.query.communities.findFirst({
       where: eq(communities.id, created.at(0)!.id),
@@ -90,14 +101,12 @@ communitiesRoute.post(
     });
 
     if (!createdCommunity) {
-      return c.json({ error: 'Failed to create new community.' }, 500); 
+      return c.json({ message: 'Failed to create new community.' }, 500); 
     }
 
     return c.json(createdCommunity)
   }
 );
-
-const inviteToCommunitySchema = z.array(z.string());
 
 communitiesRoute.post(
   '/join/:communityId',
@@ -116,35 +125,20 @@ communitiesRoute.post(
       return c.json({ message: 'You are already part of that community.' }, 412);
     }
 
-    await db.insert(communityMembers).values({communityId, username: sub}).onConflictDoNothing().returning();
+    const joinedCommunities = await db.select({
+      count: count()
+    })
+    .from(communityMembers)
+    .where(eq(communityMembers.username, sub))
+
+    if (joinedCommunities[0].count >= 5) {
+      return c.json({ error: 'You cannot be part of more then 5 communities.' }, 412); 
+    }
+
+    await db.insert(communityMembers).values({communityId, username: sub, position: 0}).onConflictDoNothing().returning();
     
     return c.json({}, 201)
   }
 );
-
-communitiesRoute.post('/:communityId/pinned', async (c) => {
-  const { sub } = c.get('jwtPayload');
-  const communityId = c.req.param('communityId');
-  const usernameToPin = c.req.query('username')
-
-  if (!usernameToPin) {
-    return c.json({ error: 'A username to pin must be provided.' }, 400);
-  }
-
-  const community = await db.query.communityMembers.findFirst({
-    where: and(
-      eq(communityMembers.communityId, communityId),
-      eq(communityMembers.username, sub)
-    )
-  });
-
-  if (!community) {
-    return c.json({ error: 'The community was not found.' }, 404);
-  }
-
-  let pinnedUsers = await db.insert(communityPinnedMembers).values({ communityId, username: sub, pinned: usernameToPin }).onConflictDoNothing().returning()
-
-  return c.json(pinnedUsers.map(({ pinned }) => pinned))
-})
 
 export default communitiesRoute;

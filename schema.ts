@@ -43,8 +43,7 @@ export const communitiesRelations = relations(communities, ({ one, many }) => ({
         fields: [communities.tournamentId],
         references: [tournaments.id],
     }),
-    members: many(communityMembers),
-    pinned: many(communityPinnedMembers)
+    members: many(communityMembers)
 }));
 
 export const users = pgTable('User', {
@@ -55,31 +54,6 @@ export const users = pgTable('User', {
     points: integer('points').notNull().default(0),
     joinedAt: timestamp('joinedAt', { mode: 'string' }).notNull().defaultNow()
 });
-
-export const communityPinnedMembers = pgTable('CommunityPinnedMembers', {
-    username: text('username').notNull().references(() => users.username),
-    communityId: uuid('communityId').notNull().references(() => communities.id),
-    pinned: text('pinned').references(() => users.username)
-}, (table) => {
-    return {
-        id: primaryKey({ columns: [table.username, table.communityId, table.pinned] }),
-    };
-});
-
-export const communityPinnedMembersRelation = relations(communityPinnedMembers, ({ one }) => ({
-    user: one(users, {
-        fields: [communityPinnedMembers.username],
-        references: [users.username]
-    }),
-    community: one(communities, {
-        fields: [communityPinnedMembers.communityId],
-        references: [communities.id]
-    }),
-    pinnedUser: one(users, {
-        fields: [communityPinnedMembers.pinned],
-        references: [users.username]
-    })
-}));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
     communities: many(communityMembers),
@@ -92,6 +66,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 export const communityMembers = pgTable('CommunityMembers', {
     username: text('username').notNull().references(() => users.username),
     communityId: uuid('communityId').notNull().references(() => communities.id),
+    position: integer('position').notNull()
 }, (table) => {
     return {
         id: primaryKey({ columns: [table.username, table.communityId] }),
