@@ -76,9 +76,9 @@ leaderboardsRoute.get('/:communityId', async (c) => {
     }
 
     try {
-        c.json(await getLeaderboardDataForCommunity(communityId, sub));
+        return c.json(await getLeaderboardDataForCommunity(communityId, sub));
     } catch(error) {
-        c.json({ errorDescription: (error as Error).message }, 500);
+        return c.json({ errorDescription: (error as Error).message }, 500);
     }
 });
 
