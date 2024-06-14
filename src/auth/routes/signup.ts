@@ -20,7 +20,7 @@ const signUpSchema = z.object({
 
 const signUpRoute = app.post('', 
     zValidator('json', signUpSchema, ({ success }, c) => {
-        if (!success) return c.json({ error: 'Incorrect schema.' }, 400);
+        if (!success) return c.json({ errorDescription: 'Incorrect schema.' }, 400);
     }),
     async (c) => {
         const { email, password, user } = c.req.valid('json');
@@ -34,11 +34,11 @@ const signUpRoute = app.post('',
             });
         } catch (err: unknown) {
             const { message } = err as FirebaseError;
-            return c.json({ message }, 409);
+            return c.json({ errorDescription: message }, 424);
         }
 
         if (!createdFireBaseUser) {
-            return c.json({ message: 'Failed to create user.'}, 500);
+            return c.json({ errorDescription: 'Failed to create user.'}, 500);
         }
 
         const firebaseId = createdFireBaseUser.uid;
@@ -62,7 +62,7 @@ const signUpRoute = app.post('',
 
         if (!createdUser) {
             // cascade delete firebase user or try again?
-            return c.json({ message: 'Failed to create user.'}, 500);
+            return c.json({ errorDescription: 'Failed to create user.'}, 500);
         }
 
         return c.json({

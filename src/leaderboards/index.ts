@@ -57,7 +57,11 @@ leaderboardsRoute.get('/', async (c) => {
     let result: Leaderboard[] = []
 
     for (const communityId of joinedCommunities.map(({id}) => id)) {
-        result.push(await getLeaderboardDataForCommunity(communityId, sub));
+        try {
+            result.push(await getLeaderboardDataForCommunity(communityId, sub));
+        } catch(error) {
+            return c.json({ errorDescription: (error as Error).message}, 500);
+        }
     }
 
     return c.json(result);
@@ -68,10 +72,14 @@ leaderboardsRoute.get('/:communityId', async (c) => {
     const communityId = c.req.param('communityId')
 
     if (!communityId || !communityId.length) {
-        return c.json({ message: "CommunityId cannot be empty." }, 400);
+        return c.json({ errorDescription: "CommunityId cannot be empty." }, 400);
     }
 
-    return c.json(await getLeaderboardDataForCommunity(communityId, sub));
+    try {
+        c.json(await getLeaderboardDataForCommunity(communityId, sub));
+    } catch(error) {
+        c.json({ errorDescription: (error as Error).message }, 500);
+    }
 });
 
 leaderboardsRoute.get('/:communityId/pages', async (c) => {
@@ -87,7 +95,7 @@ leaderboardsRoute.get('/:communityId/pages', async (c) => {
     });
 
     if (!communityExists) {
-        return c.json({ message: "Community not found." }, 404);
+        return c.json({ errorDescription: "Community not found." }, 404);
     }
 
     const result = await db.select({
@@ -95,15 +103,15 @@ leaderboardsRoute.get('/:communityId/pages', async (c) => {
         supports: teams,
         position: communityMembers.position
     })
-        .from(users)
-        .innerJoin(communityMembers, and(
-            eq(users.username, communityMembers.username),
-            eq(communityMembers.communityId, communityId)
-        ))
-        .leftJoin(teams, eq(teams.id, users.supportsTeamId))
-        .orderBy(desc(users.points), asc(users.joinedAt))
-        .offset(Number(offset))
-        .limit(Number(limit))
+    .from(users)
+    .innerJoin(communityMembers, and(
+        eq(users.username, communityMembers.username),
+        eq(communityMembers.communityId, communityId)
+    ))
+    .leftJoin(teams, eq(teams.id, users.supportsTeamId))
+    .orderBy(desc(users.points), asc(users.joinedAt))
+    .offset(Number(offset))
+    .limit(Number(limit))
 
     return c.json(result.map(({user, supports, position}) => ({
         user: {
@@ -128,7 +136,7 @@ leaderboardsRoute.get('/:communityId/user-search', async (c) => {
     });
 
     if (!communityExists) {
-        return c.json({ message: "Community not found." }, 404);
+        return c.json({ errorDescription: "Community not found." }, 404);
     }
 
     const result = await db.select({
@@ -164,7 +172,7 @@ leaderboardsRoute.get('/:tournamentId/global', async (c) => {
     const { tournamentId } = c.req.param();
 
     if (!tournamentId || !tournamentId.length) {
-        return c.json({ message: "TournamentId cannot be empty." }, 400);
+        return c.json({ errorDescription: "TournamentId cannot be empty." }, 400);
     }
 
     const tournament = await db.query.tournaments.findFirst({
@@ -172,7 +180,7 @@ leaderboardsRoute.get('/:tournamentId/global', async (c) => {
     });
 
     if (!tournament) {
-        return c.json({ message: "Tournament not found." }, 404);
+        return c.json({ errorDescription: "Tournament not found." }, 404);
     }
 
     const leaderboardData = await db.select({
@@ -199,7 +207,7 @@ leaderboardsRoute.get('/:tournamentId/global', async (c) => {
     });
 
     if (currentUserIndex == null) {
-        return c.json({ message: "Current user not found." }, 404);
+        return c.json({ errorDescription: "Current user not found." }, 404);
     }
 
     return c.json({

@@ -47,7 +47,7 @@ communitiesRoute.get('/', async (c) => {
 communitiesRoute.post(
     '/',
     zValidator('json', createCommunityPayload, ({success}, c) => {
-      if (!success) return c.json({ error: 'Incorrect schema.' }, 400);
+      if (!success) return c.json({ errorDescription: 'Incorrect schema.' }, 400);
     }),
     async (c) => {
       const { sub } = c.get('jwtPayload');
@@ -61,14 +61,14 @@ communitiesRoute.post(
           .where(eq(communityMembers.username, sub))
 
       if (joinedCommunities[0].count >= 5) {
-        return c.json({ error: 'You cannot be part of more then 5 communities.' }, 412);
+        return c.json({ errorDescription: 'You cannot be part of more then 5 communities.' }, 409);
       }
 
       const created = await db.insert(communities)
           .values({ name: name, tournamentId: tournament.id }).returning()
 
       if (created.length != 1) {
-        return c.json({ error: 'Failed to create new community.' }, 500);
+        return c.json({ errorDescription: 'Failed to create new community.' }, 500);
       }
 
       await db.insert(communityMembers).values({communityId: created.at(0)!.id, username: sub, position: 0});
@@ -84,7 +84,7 @@ communitiesRoute.post(
       });
 
       if (!createdCommunity) {
-        return c.json({ message: 'Failed to create new community.' }, 500);
+        return c.json({ errorDescription: 'Failed to create new community.' }, 500);
       }
 
       return c.json(createdCommunity)
@@ -95,7 +95,7 @@ communitiesRoute.post(
 communitiesRoute.get('/search', async (c) => {
   const { name } = c.req.query();
   if (!name) {
-    return c.json({ message: 'Invalid-request: query-param searchString must not be empty.'}, 400)
+    return c.json({ errorDescription: 'Invalid-request: query-param searchString must not be empty.'}, 400)
   }
   const result = await db.query.communities.findMany({
     where: ilike(communities.name, `%${name}%`),
@@ -124,7 +124,7 @@ communitiesRoute.post('/join', async (c) => {
     });
 
     if (community) {
-      return c.json({ message: 'You are already part of that community.' }, 412);
+      return c.json({ errorDescription: 'You are already part of that community.' }, 409);
     }
 
     const joinedCommunities = await db.select({
@@ -134,7 +134,7 @@ communitiesRoute.post('/join', async (c) => {
     .where(eq(communityMembers.username, sub))
 
     if (joinedCommunities[0].count >= 5) {
-      return c.json({ error: 'You cannot be part of more then 5 communities.' }, 412); 
+      return c.json({ errorDescription: 'You cannot be part of more then 5 communities.' }, 409); 
     }
 
     await db.insert(communityMembers).values({communityId: id, username: sub, position: 0}).onConflictDoNothing().returning();
@@ -157,7 +157,7 @@ communitiesRoute.post('/join', async (c) => {
     });
 
     if (!joined) {
-      return c.json({ message: 'Failed to join the community.' }, 500); 
+      return c.json({ errorDescription: 'Failed to join the community.' }, 500); 
     }
 
     return c.json(joined.community)

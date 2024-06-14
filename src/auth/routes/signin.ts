@@ -25,7 +25,7 @@ const signInSchema = z.object({
 const signInRoute = app.post(
     '',
     zValidator('json', signInSchema, ({ success }, c) => {
-        if (!success) return c.json({ error: 'Incorrect schema.' }, 400); 
+        if (!success) return c.json({ errorDescription: 'Incorrect schema.' }, 400); 
     }),
     async (c) => {
         const schema = c.req.valid('json');
@@ -38,7 +38,14 @@ const signInRoute = app.post(
             }
         );
         if (!req.ok) {
-            return c.json({ message: req.statusText }, 401);
+            const { error } = await req.json() as {
+                error: {
+                    code: number,
+                    message: string,
+                    errors: Array<Record<string, string>>[]
+                }
+            };
+            return c.json({ errorDescription: error.message }, 401);
         }
         const res = await req.json() as SignInResponse;
 
@@ -50,9 +57,7 @@ const signInRoute = app.post(
         });
 
         if (!user) {
-            return c.json({
-                message: 'User not found.'
-            }, 412);
+            return c.json({ errorDescription: 'User not found.' }, 409);
         }
 
         const token = await createJWT(res.localId, user.username);

@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { boolean, date, integer, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const teams = pgTable('Team', {
@@ -18,7 +18,7 @@ export const matches = pgTable('Match', {
     matchDayId: uuid('matchDayId').references(() => matchDays.id).notNull(),
     homeTeamId: uuid('homeTeamId').references(() => teams.id).notNull(),
     awayTeamId: uuid('awayTeamId').references(() => teams.id).notNull(),
-    startAt: timestamp('startAt', { mode: 'string' }).notNull().defaultNow(),
+    startAt: timestamp('startAt', { mode: 'string', withTimezone: true }).notNull().defaultNow(),
 });
 
 export const tournaments = pgTable('Tournament', {

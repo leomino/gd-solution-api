@@ -22,13 +22,13 @@ predictionsRoute.use(
 predictionsRoute.put(
     '/',
     zValidator('json', predictionCreateOrUpdate, ({ success }, c) => {
-        if (!success) return c.json({ error: 'Incorrect schema.' }, 400); 
+        if (!success) return c.json({ errorDescription: 'Incorrect schema.' }, 400); 
     }),
     async (c) => {
         const { sub } = c.get('jwtPayload');
         const matchId = c.req.query('matchId');
         if (!matchId) {
-            return c.json({ message: 'Incorrect schema.' }, 400);
+            return c.json({ errorDescription: 'Incorrect schema.' }, 400);
         }
         
         const match = await db.query.matches.findFirst({
@@ -36,14 +36,14 @@ predictionsRoute.put(
         });
 
         if (!match) {
-            return c.json({ message: 'Match not found' }, 404);
+            return c.json({ errorDescription: 'Match not found' }, 404);
         }
 
         const currentTime = new Date();
         const matchStartAt = new Date(match.startAt)
 
         if (matchStartAt < currentTime) {
-            return c.json({ message: 'Its not allowed to bet on matches that have already started or are over.' }, 412);
+            return c.json({ errorDescription: 'Its not allowed to bet on matches that have already started or are over.' }, 409);
         }
 
         const prediction = c.req.valid('json');
