@@ -34,7 +34,8 @@ matchDaysRoute.get('/', async (c) => {
               awayTeamScore: true,
               homeTeamScore: true
             }
-          }
+          },
+          stadium: true
         },
         columns: {
           id: true,

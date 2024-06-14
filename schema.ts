@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, date, integer, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, date, integer, numeric, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const teams = pgTable('Team', {
     id: uuid('id').primaryKey(),
@@ -18,8 +18,21 @@ export const matches = pgTable('Match', {
     matchDayId: uuid('matchDayId').references(() => matchDays.id).notNull(),
     homeTeamId: uuid('homeTeamId').references(() => teams.id).notNull(),
     awayTeamId: uuid('awayTeamId').references(() => teams.id).notNull(),
+    stadiumId: uuid('stadiumId').references(() => stadiums.id).notNull(),
     startAt: timestamp('startAt', { mode: 'string', withTimezone: true }).notNull().defaultNow(),
 });
+
+export const stadiums = pgTable('stadiums', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    address: text('address').notNull(),
+    capacity: integer('capacity').notNull(),
+    city: text('city').notNull(),
+    latitude: numeric('latitude').notNull(),
+    longitude: numeric('longitude').notNull(),
+    pitchLength: integer('pitchLength').notNull(),
+    pitchWidth: integer('pitchWidth').notNull()
+})
 
 export const tournaments = pgTable('Tournament', {
     id: uuid('id').primaryKey().defaultRandom(),
@@ -134,5 +147,9 @@ export const matchesRelations = relations(matches, ({ one, many }) => ({
         fields: [matches.id],
         references: [matchResults.matchId]
     }),
-    predictions: many(predictions)
+    predictions: many(predictions),
+    stadium: one(stadiums, {
+        fields: [matches.stadiumId],
+        references: [stadiums.id]
+    })
 }));

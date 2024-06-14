@@ -44,7 +44,8 @@ const getAllMatches = async (currentUsername: string) => {
           awayTeamScore: true,
           homeTeamScore: true
         }
-      }
+      },
+      stadium: true
     },
     columns: {
       id: true,
@@ -74,7 +75,8 @@ const getAboutToStart = async (currentUsername: string) => {
           awayTeamScore: true,
           homeTeamScore: true
         }
-      }
+      },
+      stadium: true
     },
     columns: {
       id: true,
