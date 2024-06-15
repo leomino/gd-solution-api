@@ -64,7 +64,7 @@ export const users = pgTable('User', {
     username: text('username').notNull().primaryKey(),
     name: text('name').notNull(),
     supportsTeamId: uuid('supportsTeamId').references(() => teams.id),
-    points: integer('points').notNull().default(0),
+    role: text('role').notNull().default("user"),
     joinedAt: timestamp('joinedAt', { mode: 'string' }).notNull().defaultNow()
 });
 

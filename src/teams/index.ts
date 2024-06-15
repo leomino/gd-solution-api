@@ -9,4 +9,4 @@ teamsRoute.get('/', async (c) => {
   return c.json(result);
 });
 
-export default teamsRoute
+export default teamsRoute;

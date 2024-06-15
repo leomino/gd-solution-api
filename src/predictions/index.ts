@@ -19,6 +19,12 @@ predictionsRoute.use(
     })
 );
 
+/**
+ * Place or update a match prediction.
+ * @Conditions:
+ * - Match exists.
+ * - Match has not started.
+ */
 predictionsRoute.put(
     '/',
     zValidator('json', predictionCreateOrUpdate, ({ success }, c) => {

@@ -58,8 +58,8 @@ const signUpRoute = app.post('',
 
         const firebaseId = createdFireBaseUser.uid;
 
-        const [created] = await db.insert(users).values({ ...user, supportsTeamId: user.supports.id,firebaseId }).returning({ username: users.username });
-        const token = await createJWT(firebaseId, created.username);
+        const [created] = await db.insert(users).values({ ...user, supportsTeamId: user.supports.id, firebaseId }).returning({ username: users.username, role: users.role });
+        const token = await createJWT(firebaseId, created.username, created.role);
 
         const createdUser = await db.query.users.findFirst({
             where: eq(users.username, created.username),
@@ -69,8 +69,8 @@ const signUpRoute = app.post('',
             columns: {
                 username: true,
                 name: true,
-                points: true,
                 joinedAt: true,
+                role: true
             }
         });
 
@@ -79,9 +79,12 @@ const signUpRoute = app.post('',
             return c.json({ errorDescription: 'Failed to create user.'}, 500);
         }
 
+        const { role, ...relevantUserProperties } = createdUser;
+
         return c.json({
             token,
-            user: createdUser
+            role,
+            user: relevantUserProperties
         }, 201);
     }
 );

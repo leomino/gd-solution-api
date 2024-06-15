@@ -13,16 +13,20 @@ matchesRoute.use(
   })
 );
 
-// get all matches including predictions for current-user.
+/**
+ * Get all matches including predictions made by the current user.
+ */
 matchesRoute.get('/', async (c) => {
   const { sub } = c.get('jwtPayload');
   return c.json(await getAllMatches(sub));
 });
 
-// get currently playing or next matches
+/**
+ * Get the next three upcoming matches including predictions made by the current user.
+ */
 matchesRoute.get('/next', async (c) => {
   const { sub } = c.get('jwtPayload');
-  const result = await getAboutToStart(sub);
+  const result = await getUpcomingMatches(sub);
   return c.json(result);
 });
 
@@ -57,10 +61,10 @@ const getAllMatches = async (currentUsername: string) => {
   return result.map(({ predictions, ...rest}) => ({ ...rest, prediction: predictions[0] ?? null }));
 }
 
-const getAboutToStart = async (currentUsername: string) => {
+const getUpcomingMatches = async (currentUsername: string) => {
   const homeTeam = alias(teams, "homeTeam");
   const awayTeam = alias(teams, "awayTeam");
-  const result = await db.select({
+  return db.select({
     id: matches.id,
     startAt: matches.startAt,
     homeTeam,
@@ -81,8 +85,6 @@ const getAboutToStart = async (currentUsername: string) => {
   .where(eq(matchResults.finalized, false))
   .orderBy(asc(matches.startAt))
   .limit(3);
-
-  return result;
 }
 
 export default matchesRoute;

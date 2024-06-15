@@ -60,11 +60,14 @@ const signInRoute = app.post(
             return c.json({ errorDescription: 'User not found.' }, 409);
         }
 
-        const token = await createJWT(res.localId, user.username);
+        const token = await createJWT(res.localId, user.username, user.role);
+
+        const { role, firebaseId, supportsTeamId, ...relevantUserProperties } = user;
 
         return c.json({
             token,
-            user
+            role,
+            user: relevantUserProperties
         });
     }
 );
