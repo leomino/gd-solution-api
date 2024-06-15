@@ -1,5 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, date, integer, numeric, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, date, integer, numeric, pgTable, primaryKey, smallint, text, timestamp, uuid, varchar, doublePrecision } from "drizzle-orm/pg-core";
 
 export const teams = pgTable('Team', {
     id: uuid('id').primaryKey(),
@@ -28,8 +28,8 @@ export const stadiums = pgTable('stadiums', {
     address: text('address').notNull(),
     capacity: integer('capacity').notNull(),
     city: text('city').notNull(),
-    latitude: numeric('latitude').notNull(),
-    longitude: numeric('longitude').notNull(),
+    latitude: doublePrecision('latitude').notNull(),
+    longitude: doublePrecision('longitude').notNull(),
     pitchLength: integer('pitchLength').notNull(),
     pitchWidth: integer('pitchWidth').notNull()
 })
