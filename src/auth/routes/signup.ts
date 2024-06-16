@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { users } from "@schema";
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
-import { createInsertSchema } from "drizzle-zod";
 import { getAuth } from 'firebase';
 import { UserRecord } from "firebase-admin/auth";
 import { FirebaseError } from "firebase-admin";
@@ -13,10 +12,18 @@ import { eq } from "drizzle-orm";
 const app = new Hono();
 
 const signUpSchema = z.object({
-    user: createInsertSchema(users),
+    user: z.object({
+        username: z.string(),
+        name: z.string(),
+        supports: z.object({
+            id: z.string(),
+            name: z.string(),
+            nameShort: z.string()
+        })
+    }),
     email: z.string(),
     password: z.string()
-})
+});
 
 const signUpRoute = app.post('', 
     zValidator('json', signUpSchema, ({ success }, c) => {
@@ -27,6 +34,14 @@ const signUpRoute = app.post('',
 
         let createdFireBaseUser: UserRecord | undefined;
         
+        const userNameTaken = await db.query.users.findFirst({
+            where: eq(users.username, user.username)
+        });
+
+        if (userNameTaken) {
+            return c.json({ errorDescription: 'Username already taken.' }, 500);
+        }
+
         try {
             createdFireBaseUser = await getAuth().createUser({
                 email,
@@ -43,8 +58,7 @@ const signUpRoute = app.post('',
 
         const firebaseId = createdFireBaseUser.uid;
 
-        const [created] = await db.insert(users).values({ ...user, firebaseId }).returning({ username: users.username });
-
+        const [created] = await db.insert(users).values({ ...user, supportsTeamId: user.supports.id,firebaseId }).returning({ username: users.username });
         const token = await createJWT(firebaseId, created.username);
 
         const createdUser = await db.query.users.findFirst({
