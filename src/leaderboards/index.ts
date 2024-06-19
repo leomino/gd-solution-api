@@ -1,6 +1,6 @@
 import { db, redis } from "@db";
-import {communities, communityMembers, teams, users} from "@schema";
-import {and, asc, desc, eq, ilike, or} from "drizzle-orm";
+import { communities, communityMembers } from "@schema";
+import { and, eq, ilike } from "drizzle-orm";
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
 
@@ -26,13 +26,13 @@ leaderboardsRoute.get("/", async (c) => {
     .where(eq(communityMembers.username, sub))
     .leftJoin(communities, eq(communities.id, communityMembers.communityId))
 
-    const promises = []
+    const taskQueue = Array<Promise<Leaderboard>>()
 
     for (const communityId of joinedCommunities.map(({id}) => id)) {
-        promises.push({ leaderboardFor: generateLeaderboard, communityId });
+        taskQueue.push(generateLeaderboard(communityId, sub));
     }
 
-    return c.json(await Promise.all(promises.map(({leaderboardFor, communityId}) => leaderboardFor(communityId, sub))));
+    return c.json(await Promise.all(taskQueue));
 });
 
 /**
@@ -78,6 +78,45 @@ leaderboardsRoute.get('/:communityId/pages', async (c) => {
     }
     const chunk = await redis.zRangeWithScores(communityId, +offset, +limit, { REV: true });
     return c.json(withPositions(chunk, +offset));
+});
+
+/**
+ * Search leaderboard entries for a specific community by username (case-insensitive).
+ */
+leaderboardsRoute.get('/:communityId/user-search', async (c) => {
+    const { communityId } = c.req.param();
+    const { searchString } = c.req.query();
+
+    const usernames = (await db.query.communityMembers.findMany({
+        where: and(
+            eq(communityMembers.communityId, communityId),
+            ilike(communityMembers.username, `%${searchString}%`)
+        ),
+        columns: {
+            username: true
+        }
+    })).map(({ username }) => username);
+
+    if (!usernames.length) {
+        return c.json([]);
+    }
+
+    const taskQueue = Array<Promise<number | null>>();
+
+    usernames.forEach((username) => taskQueue.push(redis.zRevRank(communityId, username)));
+
+    const [scores, ...ranks] = await Promise.all([
+        redis.zmScore(communityId, usernames),
+        ...taskQueue
+    ]);
+
+    // return error if usernames.length != scores.length || ranks.length
+
+    return c.json(usernames.map((username, index) => ({
+        username,
+        score: scores[index],
+        position: (ranks[index]!) + 1
+    })));
 });
 
 /**
@@ -149,47 +188,5 @@ function withPositions(setEntries: Array<SortedSetEntry>, offset: number): Array
     }
     return result;
 }
-
-leaderboardsRoute.get('/:communityId/user-search', async (c) => {
-    const { sub } = c.get('jwtPayload');
-    const { communityId } = c.req.param();
-    const { searchString } = c.req.query();
-    const communityExists = await db.query.communityMembers.findFirst({
-        where: eq(communityMembers.username, sub),
-        columns: {
-            communityId: true
-        }
-    });
-
-    if (!communityExists) {
-        return c.json({ errorDescription: "Community not found." }, 404);
-    }
-
-    const result = await db.select({
-        user: users,
-        supports: teams,
-        position: communityMembers.position
-    })
-    .from(users)
-    .innerJoin(communityMembers, and(
-        eq(communityMembers.username, users.username),
-        eq(communityMembers.communityId, communityId)
-    ))
-    .where(or(
-        ilike(users.username, `%${searchString}%`),
-        ilike(users.name, `%${searchString}%`)
-    ))
-    .leftJoin(teams, eq(teams.id, users.supportsTeamId))
-
-    return c.json(result.map(({user, supports, position}) => ({
-        user: {
-            ...user,
-            supports,
-            supportsTeamId: undefined,
-            firebaseId: undefined
-        },
-        position
-    })));
-});
 
 export default leaderboardsRoute;

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import {and, count, eq, ilike, inArray} from 'drizzle-orm';
+import { and, count, eq, ilike, inArray } from 'drizzle-orm';
 import { communities, communityMembers } from '@schema';
 import { jwt } from 'hono/jwt';
 import { zValidator } from '@hono/zod-validator';

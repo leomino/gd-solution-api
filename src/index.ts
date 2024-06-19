@@ -30,4 +30,4 @@ app
     .route('predictions', predictionsRoute)
     .route('results', matchResultsRoute)
 
-export default app;
+Bun.serve(app);

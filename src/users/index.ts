@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
 import { db } from '@db';
-import {inArray} from "drizzle-orm";
-import {users} from "@schema";
-import {zValidator} from "@hono/zod-validator";
-import {z} from "zod";
+import { inArray } from "drizzle-orm";
+import { users } from "@schema";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 
 const usersRoute = new Hono();
 
